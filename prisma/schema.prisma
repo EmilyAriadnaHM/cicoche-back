@@ -1,0 +1,420 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum SpaceType {
+  COCHERA
+  PATIO
+  TERRENO
+}
+
+enum PriceUnit {
+  HORA
+  DIA
+}
+
+enum VehicleType {
+  COCHE
+  CAMIONETA
+  MOTO
+  URBAN
+  REDILA
+}
+
+enum DocumentKind {
+  INE
+  COMPROBANTE_DOMICILIO
+  TARJETA_CIRCULACION
+  FOTO_ESPACIO
+}
+
+model User {
+  id                Int       @id @default(autoincrement())
+  nombre            String
+  email             String    @unique
+  telefono          String?   @unique
+  photoUrl          String?   @db.VarChar(500)
+  passwordHash      String
+  isVerified        Boolean   @default(false)
+  status            String    @default("ACTIVE")
+  statusReason      String?
+  statusUpdatedAt   DateTime?
+  statusUpdatedById Int?
+  lastLogin         DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  roles UserRole[]
+
+  documents         Document[]
+  vehicles          Vehicle[]
+  spaces            Space[]
+  passwordResetOtps PasswordResetOtp[]
+
+  // NUEVO
+  reservationsMade     Reservation[] @relation("ReservationOccupant")
+  reservationsReceived Reservation[] @relation("ReservationProvider")
+  verifiedDocuments    Document[]    @relation("DocumentVerifiedBy")
+
+  sentMessages   ChatMessage[]   @relation("UserSentMessages") // ✅ back relation
+  chatReadStates ChatReadState[] // ✅ back relation (lecturas)
+
+  // ✅ SOPORTE (back relations)
+  supportTickets         SupportTicket[]  @relation("SupportTicketUser")
+  supportTicketsAssigned SupportTicket[]  @relation("TicketAssignedTo")
+  supportMessages        SupportMessage[] @relation("SupportMessageAuthor")
+    // Reportes / incidencias
+  incidentReportsFiled    IncidentReport[] @relation("IncidentReporter")
+  incidentReportsAgainst  IncidentReport[] @relation("IncidentReportedUser")
+  incidentReportsAssigned IncidentReport[] @relation("IncidentAssignedTo")
+
+}
+
+model Role {
+  id    Int        @id @default(autoincrement())
+  name  String     @unique // "ADMIN" | "PRESTADOR" | "OCUPANTE"
+  users UserRole[]
+}
+
+model UserRole {
+  userId Int
+  roleId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+}
+
+// =====================
+// Documentos del usuario
+// =====================
+model Document {
+  id        Int          @id @default(autoincrement())
+  userId    Int
+  kind      DocumentKind
+  url       String
+  createdAt DateTime     @default(now())
+  verified  Boolean      @default(false)
+
+  // ✅ NUEVO
+  verifiedAt   DateTime?
+  verifiedById Int?
+  verifiedBy   User?     @relation("DocumentVerifiedBy", fields: [verifiedById], references: [id], onDelete: SetNull)
+
+  rejectionReason String? @db.VarChar(255)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, kind])
+  @@index([verified])
+  @@index([verifiedById])
+}
+
+// =====================
+// Vehículos (OCUPANTE)
+// =====================
+model Vehicle {
+  id        Int         @id @default(autoincrement())
+  userId    Int
+  type      VehicleType
+  modelo    Int
+  marca     String
+  color     String
+  plate     String?     @unique
+  createdAt DateTime    @default(now())
+
+  user   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  photos VehiclePhoto[]
+
+  // ✅ back relation requerida
+  reservations Reservation[] @relation("ReservationVehicle")
+}
+
+model VehiclePhoto {
+  id        Int      @id @default(autoincrement())
+  vehicleId Int
+  url       String
+  createdAt DateTime @default(now())
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+}
+
+// =====================
+// Espacios (PRESTADOR)
+// =====================
+model Space {
+  id            Int    @id @default(autoincrement())
+  idPropietario Int
+  titulo        String
+  descripcion   String
+  direccion     String
+
+  largoCm     Int
+  anchoCm     Int
+  altoCm      Int
+  cubierto    Boolean
+  tipoEspacio String
+  precioHora  Float
+  precioDia   Float
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  latitud  Float?
+  longitud Float?
+  capacity Int    @default(1)
+
+  owner  User         @relation(fields: [idPropietario], references: [id])
+  photos SpacePhoto[]
+
+  // NUEVO
+  reservations        Reservation[]
+  allowedVehicleTypes SpaceAllowedVehicleType[]
+  incidentReports IncidentReport[]
+
+}
+
+model SpacePhoto {
+  id      Int    @id @default(autoincrement())
+  spaceId Int
+  url     String
+
+  space Space @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+}
+
+enum ReservationStatus {
+  PENDIENTE
+  ACEPTADA
+  RECHAZADA
+  CANCELADA
+  FINALIZADA
+  EXPIRADA
+
+  CHECKIN_SOLICITADO
+  EN_CURSO
+}
+
+enum BillingMode {
+  HORA
+  DIA
+  AUTO
+}
+
+model PasswordResetOtp {
+  id     Int  @id @default(autoincrement())
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  otpHash    String
+  expiresAt  DateTime
+  attempts   Int       @default(0) // intentos fallidos
+  consumedAt DateTime? // cuando se usó correctamente
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Reservation {
+  id         Int @id @default(autoincrement())
+  spaceId    Int
+  occupantId Int
+  providerId Int
+
+  // ✅ NUEVO (opcional temporalmente)
+  vehicleId Int?
+  vehicle   Vehicle? @relation("ReservationVehicle", fields: [vehicleId], references: [id], onDelete: Restrict)
+
+  startAt DateTime
+  endAt   DateTime
+
+  checkInAt       DateTime?
+  startedAt       DateTime?
+  endedAt         DateTime?
+  checkInDeadline DateTime?
+
+  status ReservationStatus @default(PENDIENTE)
+
+  totalPrice      Float?
+  billingMode     BillingMode @default(AUTO)
+  rejectReason    String?     @db.VarChar(255)
+  cancelledReason String?     @db.VarChar(255)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  space    Space @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  occupant User  @relation("ReservationOccupant", fields: [occupantId], references: [id], onDelete: Cascade)
+  provider User  @relation("ReservationProvider", fields: [providerId], references: [id], onDelete: Cascade)
+
+  messages       ChatMessage[]
+  chatReadStates ChatReadState[]
+  incidentReports IncidentReport[]
+
+
+  @@index([spaceId, startAt, endAt])
+  @@index([occupantId, status])
+  @@index([providerId, status])
+  @@index([vehicleId]) // ✅ sugerido
+  
+}
+
+enum ChatMessageType {
+  TEXT
+  SYSTEM
+}
+
+model ChatMessage {
+  id            Int             @id @default(autoincrement())
+  reservationId Int
+  senderId      Int
+  type          ChatMessageType @default(TEXT)
+  body          String          @db.Text
+  createdAt     DateTime        @default(now())
+
+  // ✅ NUEVO (lecturas por rol)
+  readByOccupantAt DateTime?
+  readByProviderAt DateTime?
+
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  sender      User        @relation("UserSentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([reservationId, createdAt])
+  @@index([senderId, createdAt])
+}
+
+model ChatReadState {
+  id            Int @id @default(autoincrement())
+  reservationId Int
+  userId        Int
+
+  lastReadMessageId Int?
+  lastReadAt        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([reservationId, userId])
+  @@index([reservationId])
+  @@index([userId])
+}
+
+model SpaceAllowedVehicleType {
+  spaceId Int
+  type    VehicleType
+
+  space Space @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  @@id([spaceId, type])
+  @@index([type])
+}
+
+model SupportTicket {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId Int
+  user   User @relation("SupportTicketUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  status      String @default("OPEN")
+  category    String @default("GENERAL")
+  subject     String
+  description String
+
+  assignedToId Int?
+  assignedTo   User? @relation("TicketAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  messages SupportMessage[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model SupportMessage {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  ticketId Int
+  ticket   SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  authorId Int
+  author   User @relation("SupportMessageAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  body    String
+  isAdmin Boolean @default(false)
+
+  @@index([ticketId])
+  @@index([createdAt])
+}
+enum IncidentStatus {
+  OPEN
+  IN_REVIEW
+  ACTION_TAKEN
+  DISMISSED
+  CLOSED
+}
+
+enum IncidentCategory {
+  GENERAL
+  RESERVA
+  ESPACIO
+  PAGO
+  CUENTA
+  FRAUDE
+  SEGURIDAD
+  OTRO
+}
+
+model IncidentReport {
+  id          Int            @id @default(autoincrement())
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  // quién reporta
+  reporterId  Int
+  reporter    User           @relation("IncidentReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  // opcional: usuario reportado (fraude/incumplimiento)
+  reportedUserId Int?
+  reportedUser   User?       @relation("IncidentReportedUser", fields: [reportedUserId], references: [id], onDelete: SetNull)
+
+  // opcional: space / reservation relacionadas
+  spaceId       Int?
+  space         Space?       @relation(fields: [spaceId], references: [id], onDelete: SetNull)
+
+  reservationId Int?
+  reservation   Reservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+
+  category    IncidentCategory @default(GENERAL)
+  status      IncidentStatus   @default(OPEN)
+
+  subject     String         @db.VarChar(120)
+  description String         @db.Text
+
+  // asignación opcional a admin
+  assignedToId Int?
+  assignedTo   User?         @relation("IncidentAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  adminNote   String?        @db.Text
+  resolvedAt  DateTime?
+
+  @@index([reporterId])
+  @@index([reportedUserId])
+  @@index([spaceId])
+  @@index([reservationId])
+  @@index([status])
+  @@index([category])
+  @@index([createdAt])
+}
