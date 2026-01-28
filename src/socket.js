@@ -143,7 +143,7 @@ function initSocket(httpServer, prisma) {
           select: { id: true, reservationId: true, senderId: true, body: true, type: true, createdAt: true },
         });
 
-        // ✅ el emisor ya leyó hasta su propio mensaje
+        //el emisor ya leyó hasta su propio mensaje
         const now = await upsertRead(prisma, reservationId, userId, msg.id);
 
         // Emitir mensaje + update de lectura

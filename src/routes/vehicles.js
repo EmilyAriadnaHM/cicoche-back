@@ -106,7 +106,7 @@ router.get("/mine", requireAuth, async (req, res) => {
   try {
     const vehicles = await prisma.vehicle.findMany({
       where: { userId: req.user.id },
-      include: { photos: true },          // ✅ IMPORTANTE
+      include: { photos: true },          
       orderBy: { createdAt: "desc" },
     });
     res.json({ vehicles });
@@ -151,8 +151,6 @@ router.delete("/:id", requireAuth, async (req, res) => {
 
     if (!vehicle) return res.status(404).json({ error: "Vehículo no encontrado" });
 
-    // 2) Borra registros (por si no tienes cascade)
-    //    Si tu schema tiene onDelete: Cascade, deleteMany es opcional pero no estorba.
     await prisma.vehiclePhoto.deleteMany({ where: { vehicleId: id } });
     await prisma.vehicle.delete({ where: { id } });
 

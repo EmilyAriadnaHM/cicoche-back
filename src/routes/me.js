@@ -47,7 +47,6 @@ function getBaseUrl(req) {
 function mapUser(u, baseUrl = "") {
   const raw = u.photoUrl || null;
 
-  // Si guardas rutas tipo "/uploads/avatars/xxx.jpg" => regresa URL absoluta
   const photoUrl = raw
     ? (raw.startsWith("http") ? raw : `${baseUrl}${raw}`)
     : null;

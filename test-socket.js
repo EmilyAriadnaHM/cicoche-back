@@ -6,7 +6,7 @@ const reservationId = 8;
 const socket = io("http://127.0.0.1:4000", {
   path: "/socket.io",
   auth: { token },
-  transports: ["websocket"], // 👈 sin polling
+  transports: ["websocket"], 
   timeout: 8000,
   reconnectionAttempts: 2,
 });

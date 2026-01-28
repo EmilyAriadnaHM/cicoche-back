@@ -13,7 +13,7 @@ function extFromMimeOrName(file) {
   if (mime === "application/pdf" || name.endsWith(".pdf")) return ".pdf";
   if (mime === "image/png" || name.endsWith(".png")) return ".png";
   if (mime === "image/webp" || name.endsWith(".webp")) return ".webp";
-  return ".jpg"; // default
+  return ".jpg"; 
 }
 
 const storage = multer.diskStorage({

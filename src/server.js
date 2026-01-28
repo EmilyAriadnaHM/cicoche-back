@@ -1,4 +1,4 @@
-// src/server.js (o server.js según tu estructura)
+// src/server.js 
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
@@ -19,7 +19,7 @@ const meRoutes = require("./routes/me");
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// 🔓 CORS (abierto para desarrollo)
+
 app.use(cors({ origin: "*" }));
 
 // Body limits (base64)
@@ -71,7 +71,7 @@ app.use("/api/auth", passwordResetRoutes);
 //app.use("/api/admin/documents", require("./routes/adminDocuments"));
 app.use("/api", meRoutes);
 
-// 🔍 Healthcheck
+//Healthcheck
 app.get("/api/health", (req, res) => {
   res.json({ ok: true, service: "CICOCHE API", ts: new Date().toISOString() });
 });

@@ -56,13 +56,12 @@ model User {
   spaces            Space[]
   passwordResetOtps PasswordResetOtp[]
 
-  // NUEVO
   reservationsMade     Reservation[] @relation("ReservationOccupant")
   reservationsReceived Reservation[] @relation("ReservationProvider")
   verifiedDocuments    Document[]    @relation("DocumentVerifiedBy")
 
-  sentMessages   ChatMessage[]   @relation("UserSentMessages") // ✅ back relation
-  chatReadStates ChatReadState[] // ✅ back relation (lecturas)
+  sentMessages   ChatMessage[]   @relation("UserSentMessages") 
+  chatReadStates ChatReadState[] 
 
   // ✅ SOPORTE (back relations)
   supportTickets         SupportTicket[]  @relation("SupportTicketUser")

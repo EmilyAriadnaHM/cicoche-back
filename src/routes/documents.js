@@ -5,7 +5,7 @@ const prisma = require("../lib/prisma");
 const requireAuth = require("../middlewares/requireAuth");
 const { uploadDocument } = require("../middlewares/uploadDocuments");
 
-// ----- 1) Endpoint actual (manual), lo dejo pero ajustado a ruta relativa o absoluta -----
+
 const docSchemaManual = z.object({
   kind: z.enum(["INE", "COMPROBANTE_DOMICILIO", "TARJETA_CIRCULACION", "FOTO_ESPACIO"]),
   url: z.string().min(1).refine((v) => v.startsWith("/uploads/documents/"), {
@@ -34,7 +34,7 @@ router.post("/", requireAuth, async (req, res) => {
   try {
     const data = docSchemaManual.parse(req.body);
 
-    // Si quieres 1 doc por tipo, borra el anterior primero:
+   
     await prisma.document.deleteMany({
       where: { userId: req.user.id, kind: data.kind },
     });

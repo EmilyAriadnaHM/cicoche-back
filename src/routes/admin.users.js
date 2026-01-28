@@ -99,7 +99,7 @@ router.patch("/users/:id/status", requireAuth, requireRole("ADMIN"), async (req,
 
     const { status, reason } = parsed.data;
 
-    // evita que un admin se bloquee a sí mismo accidentalmente (opcional)
+    // evita que un admin se bloquee a sí mismo accidentalmente
     if (id === req.user.id && status !== "ACTIVE") {
       return res.status(400).json({ error: "No puedes cambiar tu propio estado." });
     }

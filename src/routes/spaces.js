@@ -95,7 +95,7 @@ router.post(
           descripcion: data.description,
           direccion: data.address,
 
-          // Nota: si tus campos en Prisma NO permiten null, ajusta esto
+
           largoCm: data.length != null ? Math.round(data.length * 100) : 0,
           anchoCm: data.width != null ? Math.round(data.width * 100) : 0,
           altoCm: data.height != null ? Math.round(data.height * 100) : 0,
@@ -109,10 +109,9 @@ router.post(
           latitud: data.lat ?? null,
           longitud: data.lng ?? null,
 
-          capacity, // ✅ NUEVO
+          capacity, 
           activo: true,
 
-          // ✅ NUEVO: reglas de vehículo (si viene vacío, backend lo interpreta como “sin restricciones”)
           allowedVehicleTypes:
             allowedVehicleTypes.length > 0
               ? { create: allowedVehicleTypes.map((t) => ({ type: t })) }
